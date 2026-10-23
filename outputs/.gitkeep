@@ -1,0 +1,13 @@
+chore: inicializar estructura del repositorio, .gitignore y requirements.txt
+
+data: incorporar archivos CSV y JSON del catalogo musical y documentacion en data/README.md
+
+feat(fuentes): implementar clase abstracta FuenteDatos y lectores FuenteCSV y FuenteJSON
+
+feat(pipeline): implementar clase Cancion, normalizacion, validacion de esquema y limpieza
+
+feat(operaciones): agregar resumen, filtrado, top de streams, albumes y comparacion de artistas
+
+feat(cli): implementar punto de entrada en src/main.py con subcomandos y exportacion CSV
+
+test(docs): agregar suite de 22 pruebas unitarias en test_app.py y documentacion principal
