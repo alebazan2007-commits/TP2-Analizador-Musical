@@ -1,0 +1,1 @@
+"""Paquete principal del analizador de catálogo musical."""
