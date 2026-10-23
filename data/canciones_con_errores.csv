@@ -1,0 +1,88 @@
+id_cancion,artista,cancion,album,tipo_album,duracion_min,streams,views,likes,energy
+RHC-001,Red Hot Chili Peppers,Californication,Californication (Deluxe Edition),album,5.5,1055738398,1018811259,4394471,0.767
+RHC-002,Red Hot Chili Peppers,Under the Bridge,Blood Sugar Sex Magik (Deluxe Edition),album,4.41,1061750522,246687714,1213572,0.345
+RHC-003,Red Hot Chili Peppers,Can't Stop,By the Way (Deluxe Edition),album,4.48,866464951,,1740224,0.938
+RHC-004,Red Hot Chili Peppers,Scar Tissue,Californication (Deluxe Edition),album,3.6,613838674,435121530,1890900,0.717
+RHC-005,Red Hot Chili Peppers,Otherside,Californication (Deluxe Edition),album,4.26,732774515,673528656,3140356,0.795
+RHC-006,Red Hot Chili Peppers,Snow (Hey Oh),Stadium Arcadium,album,5.58,860722316,320871237,1272266,0.9
+RHC-007,Red Hot Chili Peppers,Dani California,Stadium Arcadium,album,4.7,550067391,324228662,1456622,0.913
+RHC-008,Red Hot Chili Peppers,By the Way,By the Way (Deluxe Edition),album,3.62,367485508,179005296,784717,0.97
+RHC-009,Red Hot Chili Peppers,Give It Away,Blood Sugar Sex Magik (Deluxe Edition),album,4.72,301947159,86637926,434837,0.936
+RHC-010,Red Hot Chili Peppers,Dark Necessities,The Getaway,album,5.03,385677873,440037964,,0.742
+BTL-001,The Beatles,Here Comes The Sun - Remastered 2009,Abbey Road (Remastered),album,3.1,942898131,114971785,1126554,0.54
+BTL-002,The Beatles,Let It Be - Remastered 2009,Let It Be (Remastered),album,4.05,526788025,131925109,1075941,0.403
+BTL-003,The Beatles,Come Together - Remastered 2009,Abbey Road (Remastered),album,4.33,574936342,31607772,383619,0.376
+BTL-004,The Beatles,Yesterday - Remastered 2009,Help! (Remastered),album,2.09,475131674,42856675,475089,0.179
+BTL-005,The Beatles,Twist And Shout - Remastered 2009,Please Please Me (Remastered),album,2.59,341963190,53228361,490790,0.849
+BTL-006,The Beatles,Blackbird - Remastered 2009,The Beatles (Remastered),album,2.31,326733164,33852949,365297,0.127
+BTL-007,The Beatles,In My Life - Remastered 2009,Rubber Soul (Remastered),album,2.44,266426563,63223118,463315,0.435
+BTL-008,The Beatles,Hey Jude - Remastered 2015,1 (Remastered),album,7.09,486111943,56888766,460662,0.607
+BTL-009,The Beatles,I Want To Hold Your Hand - Remastered 2015,1 (Remastered),album,2.43,334903879,28799448,275921,0.715
+BTL-010,The Beatles,Something - Remastered 2009,Abbey Road (Remastered),album,3.04,233382117,96849734,675186,0.338
+EJN-001,Elton John,Cold Heart - PNAU Remix,The Lockdown Sessions,album,3.38,1357658479,396909270,2532714,0.8
+EJN-002,Elton John,I'm Still Standing,Too Low For Zero,album,3.06,649281620,170453554,1658219,0.904
+EJN-003,Elton John,Hold Me Closer,The Lockdown Sessions,album,3.37,190102352,15181510,165237,0.783
+EJN-004,Elton John,"Rocket Man (I Think It's Going To Be A Long, Long Time)",Honky Chateau,album,4.69,828968108,129299713,960562,0.532
+EJN-005,Elton John,Your Song,Elton John,album,4.03,654292280,1591571,22237,0.315
+EJN-006,Elton John,Don't Go Breaking My Heart,Rock Of The Westies,album,4.59,562468940,87086359,638960,0.844
+EJN-007,Elton John,Tiny Dancer,Madman Across The Water,album,6.28,606925181,155579484,650110,0.428
+EJN-008,Elton John,Step Into Christmas,Goodbye Yellow Brick Road (40th Anniversary Celebration / Super Deluxe),album,4.54,236457156,19096844,47486,0.925
+EJN-009,Elton John,Goodbye Yellow Brick Road - Remastered 2014,Goodbye Yellow Brick Road (Remastered),album,3.21,242563343,17035966,209965,0.473
+EJN-010,Elton John,Merry Christmas,Merry Christmas,single,3.48,133344222,57457813,809894,0.935
+PFL-001,Pink Floyd,"Another Brick in the Wall, Pt. 2",The Wall,album,3.98,0,42252469,405995,0.394
+PFL-002,Pink Floyd,Wish You Were Here,Wish You Were Here,album,5.58,557368632,328482,5849,0.262
+PFL-003,Pink Floyd,The Great Gig in the Sky,The Dark Side of the Moon,album,4.73,0,7433876,83454,0.217
+PFL-004,Pink Floyd,Comfortably Numb,The Wall,album,6.37,0,474581,7571,0.366
+PFL-005,Pink Floyd,Money,The Dark Side of the Moon,album,6.38,0,27865859,217345,0.536
+PFL-006,Pink Floyd,Breathe (In the Air),The Dark Side of the Moon,album,2.83,0,486448,8034,0.373
+PFL-007,Pink Floyd,Time,The Dark Side of the Moon,album,6.9,0,101194,1643,0.48
+PFL-008,Pink Floyd,Hey You,The Wall,album,4.64,0,6305982,46296,0.302
+PFL-009,Pink Floyd,Brain Damage,The Dark Side of the Moon,album,3.78,0,33552,0,0.265
+PFL-010,Pink Floyd,Us and Them,The Dark Side of the Moon,album,7.82,0,147200,2914,0.302
+OAS-001,Oasis,Wonderwall - Remastered,(What's The Story) Morning Glory? (Deluxe Remastered Edition),album,4.31,1568357013,5920778,94047,0.893
+OAS-002,Oasis,Don't Look Back In Anger - Remastered,(What's The Story) Morning Glory? (Deluxe Remastered Edition),album,4.83,0,5216690,82027,0.936
+OAS-003,Oasis,Stop Crying Your Heart Out,Heathen Chemistry,album,5.05,222997016,40670355,280372,0.558
+OAS-004,Oasis,Champagne Supernova - Remastered,(What's The Story) Morning Glory? (Deluxe Remastered Edition),album,7.52,310236960,7602328,43830,0.817
+OAS-005,Oasis,Live Forever - Remastered,Definitely Maybe (Deluxe Edition Remastered),album,4.61,196083015,41433735,209073,0.822
+OAS-006,Oasis,Supersonic - Remastered,Definitely Maybe (Deluxe Edition Remastered),album,4.73,120315940,62494588,267021,0.913
+OAS-007,Oasis,She's Electric - Remastered,(What's The Story) Morning Glory? (Deluxe Remastered Edition),album,3.68,98442003,7313387,67141,0.905
+OAS-008,Oasis,Half The World Away - Remastered,Definitely Maybe (Deluxe Edition Remastered),album,4.46,0,17748202,94151,0.458
+OAS-009,Oasis,Stand By Me - Remastered,Be Here Now (Deluxe Remastered Edition),album,5.93,0,1097539,16688,0.825
+OAS-010,Oasis,Songbird,Heathen Chemistry,album,2.13,42404903,10810618,50735,0.561
+BJV-001,Bon Jovi,Livin' On A Prayer,Slippery When Wet,album,4.15,1136987099,1001651093,4560379,0.887
+BJV-002,Bon Jovi,You Give Love A Bad Name,Slippery When Wet,album,3.71,803312398,344914092,1568340,0.96
+BJV-003,Bon Jovi,It's My Life,Crush,album,3.74,633798307,1215486930,6590921,0.913
+BJV-004,Bon Jovi,Always,Cross Road,compilation,5.88,399920066,906667845,3364863,0.659
+BJV-005,Bon Jovi,Wanted Dead Or Alive,Slippery When Wet,album,5.14,335808355,177513233,872881,0.802
+BJV-006,Bon Jovi,Bed Of Roses,Keep The Faith,album,6.57,277814070,320174390,1144189,0.596
+BJV-007,Bon Jovi,Runaway,Bon Jovi,album,3.84,197345911,137551093,566860,0.899
+BJV-008,Bon Jovi,I'll Be There For You,New Jersey (Deluxe Edition),album,5.78,163694429,268058381,958921,0.727
+BJV-009,Bon Jovi,Bad Medicine,New Jersey (Deluxe Edition),album,5.28,144299907,48224548,207031,0.973
+BJV-010,Bon Jovi,Thank You For Loving Me,Crush,album,5.15,78748335,2863878,35911,0.342
+QUE-001,Queen ,Don't Stop Me Now - Remastered 2011,Jazz (Deluxe Remastered Version),album,3.49,1493664747,810347487,5235886,0.865
+QUE-002,Queen,Another One Bites The Dust - Remastered 2011,The Game (Deluxe Remastered Version),album,3.58,1443216194,568678121,3713557,0.528
+QUE-003,Queen,Bohemian Rhapsody - Remastered 2011,A Night At The Opera (Deluxe Remastered Version),album,5.91,2038872787,1575428757,11351580,0.402
+QUE-004,Queen,Under Pressure - Remastered 2011,Hot Space (Deluxe Remastered Version),album,4.14,1244601242,218279630,1559392,0.711
+QUE-005,Queen,We Will Rock You - Remastered 2011,News Of The World (Deluxe Remastered Version),album,2.03,988607964,918247,6042,0.497
+QUE-006,Queen,Crazy Little Thing Called Love - Remastered 2011,The Game (Deluxe Remastered Version),album,2.72,551130364,192579813,1091964,0.762
+QUE-007,Queen,I Want To Break Free - Remastered 2011,The Works (Deluxe Remastered Version),album,4.3,0,536167203,3815417,0.433
+QUE-008,Queen,Killer Queen - Remastered 2011,Sheer Heart Attack (Deluxe Remastered Version),album,2.99,612430173,259389082,1891810,0.65
+QUE-009,Queen,We Are The Champions - Remastered 2011,News Of The World (Deluxe Remastered Version),album,2.99,567937359,256806100,1847421,0.459
+QUE-010,Queen,Radio Ga Ga - Remastered 2011,The Works (Deluxe Remastered Version),album,5.8,444072927,290456631,1524037,0.502
+MMI-001,Mac Miller,The Spins,K.I.D.S.,album,3.26,381425754,821393,7320,0.766
+MMI-002,Mac Miller,Love Lost,"I Love Life, Thank You",album,2.71,81335864,2110850,38425,0.812
+MMI-003,Mac Miller,Self Care,Swimming,album,5.75,538108030,419494661,2676012,0.538
+MMI-004,Mac Miller,Small Worlds,Swimming,album,4.53,208187811,13625529,187146,0.546
+MMI-005,Mac Miller,Weekend (feat. Miguel),GO:OD AM,album,3.47,486067350,60539784,457491,0.435
+MMI-006,Mac Miller,Congratulations (feat. Bilal),The Divine Feminine,album,4.27,112529647,8395581,116808,0.225
+MMI-007,Mac Miller,Blue World,Circles,album,3.49,257372415,16526177,230071,0.553
+MMI-008,Mac Miller,Good News,Circles,album,5.7,367719834,119813112,1497134,0.32
+MMI-009,Mac Miller,Come Back to Earth,Swimming,album,2.7,228720571,21054841,247048,0.238
+MMI-010,Mac Miller,My Favorite Part,The Divine Feminine,album,3.6,285795421,104932054,1262044,0.33
+OAS-1,Oasis,Wonderwall - Remastered [PRUEBA],(What's The Story) Morning Glory? (Deluxe Remastered Edition),album,4.31,1568357013,5920778,94047,0.893
+RHC-001,Red Hot Chili Peppers,Californication [PRUEBA],Californication (Deluxe Edition),album,5.5,1055738398,1018811259,4394471,0.767
+MMI-011,Mac Miller,The Spins [PRUEBA],K.I.D.S.,album,0.0,381425754,821393,7320,0.766
+QUE-011,Queen,Don't Stop Me Now - Remastered 2011 [PRUEBA],Jazz (Deluxe Remastered Version),album,3.49,-100,810347487,5235886,0.865
+RHC-011,Red Hot Chili Peppers,Californication [PRUEBA],Californication (Deluxe Edition),album,5.5,1055738398,1018811259,4394471,1.7
+PFL-011,Pink Floyd,Wish You Were Here [PRUEBA],Wish You Were Here,remix,5.58,557368632,328482,5849,0.262
+EJN-011,Elton John,,The Lockdown Sessions,album,3.38,1357658479,396909270,2532714,0.8
