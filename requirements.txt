@@ -1,0 +1,2 @@
+# Proyecto para Python 3.10 o superior.
+# No requiere dependencias externas; usa la biblioteca estándar.

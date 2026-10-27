@@ -1,15 +1,18 @@
-"""Suite de 22 pruebas unitarias para verificar fuentes, pipeline, dominio y CLI."""
+"""Suite de 28 pruebas unitarias para verificar fuentes, pipeline, dominio y CLI."""
 
+import csv
 import io
 import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import FrozenInstanceError
 from typing import Any
 
-from src.fuentes import obtener_fuente
+from src.fuentes import FuenteCSV, FuenteJSON, obtener_fuente
 from src.main import main
 from src.pipeline import (
+    COLUMNAS_ESPERADAS,
     Cancion,
     album_mas_escuchado_por_artista,
     comparar_artistas,
@@ -17,6 +20,7 @@ from src.pipeline import (
     filtrar_canciones,
     limpiar_datos,
     normalizar_campos,
+    registrar_normalizaciones,
     resumen_general,
     top_canciones,
     validar_esquema,
@@ -494,6 +498,116 @@ class TestAnalizadorMusical(unittest.TestCase):
                     ]
                 )
             self.assertNotEqual(codigo_err, 0)
+
+
+    def test_23_bom_de_excel_se_lee_bien(self) -> None:
+        """23. CSV y JSON guardados con BOM (como hace Excel en Windows) se leen igual que sin BOM."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for nombre, fuente in (("canciones.csv", FuenteCSV()), ("canciones.json", FuenteJSON())):
+                with open(f"data/{nombre}", encoding="utf-8") as origen:
+                    contenido = origen.read()
+                ruta_bom = os.path.join(tmpdir, nombre)
+                with open(ruta_bom, "w", encoding="utf-8-sig", newline="") as destino:
+                    destino.write(contenido)
+
+                filas_bom = fuente.cargar(ruta_bom)
+                self.assertEqual(filas_bom, fuente.cargar(f"data/{nombre}"))
+                self.assertIn("id_cancion", filas_bom[0])
+                validar_esquema(normalizar_campos(filas_bom))  # no debe lanzar error
+
+    def test_24_regex_id_rechaza_salto_de_linea_final(self) -> None:
+        """24. La regex usa fullmatch: 'OAS-001' pasa; 'OAS-001\\n' y 'OAS-001 ' no."""
+        self.assertTrue(validar_formato_id("OAS-001"))
+        self.assertFalse(validar_formato_id("OAS-001\n"))
+        self.assertFalse(validar_formato_id("OAS-001 "))
+
+    def test_25_normalizaciones_quedan_registradas(self) -> None:
+        """25. El espacio sobrante de 'Queen ' (fila 61) se registra; el catálogo base no tiene ninguno."""
+        resultados = {}
+        for ruta in ("data/canciones_con_errores.csv", "data/canciones_con_errores.json"):
+            originales = obtener_fuente(ruta).cargar(ruta)
+            resultados[ruta] = registrar_normalizaciones(originales, normalizar_campos(originales))
+
+        csv_ajustes, json_ajustes = resultados.values()
+        self.assertEqual(csv_ajustes, json_ajustes)
+        self.assertEqual(len(csv_ajustes), 1)
+        self.assertEqual(csv_ajustes[0]["nro_fila"], 61)
+        self.assertEqual(csv_ajustes[0]["id_cancion"], "QUE-001")
+        self.assertEqual(csv_ajustes[0]["campo"], "artista")
+        self.assertEqual(csv_ajustes[0]["valor_original"], "Queen ")
+
+        base = obtener_fuente("data/canciones.csv").cargar("data/canciones.csv")
+        self.assertEqual(registrar_normalizaciones(base, normalizar_campos(base)), [])
+        self.assertEqual(
+            registrar_normalizaciones(
+                obtener_fuente("data/canciones_con_errores.csv").cargar("data/canciones_con_errores.csv"),
+                normalizar_campos(
+                    obtener_fuente("data/canciones_con_errores.csv").cargar("data/canciones_con_errores.csv")
+                ),
+                filas_excluidas={61},
+            ),
+            [],
+        )
+
+    def test_26_verificar_resultado_detecta_resultados_incorrectos(self) -> None:
+        """26. verificar_resultado acepta resultados correctos y rechaza top desordenado o álbum que no es el máximo."""
+        datos = normalizar_campos(obtener_fuente("data/canciones.csv").cargar("data/canciones.csv"))
+        canciones, _, _ = limpiar_datos(datos)
+
+        top = top_canciones(canciones, n=3)
+        verificar_resultado(top, canciones, "top")
+        with self.assertRaises(ValueError):
+            verificar_resultado(list(reversed(top)), canciones, "top")
+
+        albumes = album_mas_escuchado_por_artista(canciones)
+        verificar_resultado(albumes, canciones, "albumes")
+
+        fila_queen = next(f for f in albumes if f["artista"] == "Queen")
+        otro_album = next(
+            c.album for c in canciones
+            if c.artista == "Queen" and c.streams and c.album != fila_queen["album"]
+        )
+        suma_otro = sum(c.streams for c in canciones if c.album == otro_album and c.streams)
+        mala = [dict(f) for f in albumes]
+        for fila in mala:
+            if fila["artista"] == "Queen":
+                fila["album"], fila["streams_totales"] = otro_album, suma_otro
+        with self.assertRaises(ValueError):
+            verificar_resultado(mala, canciones, "albumes")  # suma correcta, pero no es el máximo
+
+        falsa = [dict(f) for f in albumes]
+        for fila in falsa:
+            if fila["artista"] == "Oasis":
+                fila["album"], fila["streams_totales"] = "sin datos", "sin datos"
+        with self.assertRaises(ValueError):
+            verificar_resultado(falsa, canciones, "albumes")  # Oasis sí tiene streams
+
+    def test_27_cancion_es_inmutable_y_comparable(self) -> None:
+        """27. Cancion (dataclass frozen): igual si sus campos son iguales, hasheable y no modificable."""
+        args = ("QUE-003", "Queen", "Bohemian Rhapsody", "A Night At The Opera", "album", 5.9, 10, 1, 1, 0.4)
+        c1, c2 = Cancion(*args), Cancion(*args)
+        self.assertEqual(c1, c2)
+        self.assertEqual(hash(c1), hash(c2))
+        self.assertEqual(list(c1.a_dict().keys()), COLUMNAS_ESPERADAS)
+        with self.assertRaises(FrozenInstanceError):
+            c1.streams = 99  # type: ignore[misc]
+
+    def test_28_main_exporta_normalizaciones_en_ajustes_csv(self) -> None:
+        """28. main() sobre el archivo con errores deja 14 ajustes (13 streams=0 + 1 texto) en ajustes.csv."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                codigo = main(
+                    ["--entrada", "data/canciones_con_errores.csv", "--salida-dir", tmpdir, "resumen"]
+                )
+            self.assertEqual(codigo, 0)
+            with open(os.path.join(tmpdir, "ajustes.csv"), encoding="utf-8", newline="") as f:
+                filas = list(csv.DictReader(f))
+            self.assertEqual(len(filas), 14)
+            self.assertEqual(sum(1 for fila in filas if fila["campo"] == "streams"), 13)
+            self.assertEqual([fila["id_cancion"] for fila in filas if fila["campo"] == "artista"], ["QUE-001"])
+
+            with open(os.path.join(tmpdir, "rechazos.csv"), encoding="utf-8", newline="") as f:
+                self.assertEqual(len(list(csv.DictReader(f))), 7)
 
 
 if __name__ == "__main__":

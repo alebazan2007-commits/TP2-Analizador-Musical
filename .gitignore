@@ -1,9 +1,19 @@
+# Python
 __pycache__/
 *.pyc
+
+# Entornos virtuales
 .venv/
 venv/
+
+# Archivos privados
+.env
+
+# Editores y sistema
 .idea/
 .vscode/
 .DS_Store
+
+# Resultados de ejecución (se conserva solo la carpeta)
 outputs/*
 !outputs/.gitkeep

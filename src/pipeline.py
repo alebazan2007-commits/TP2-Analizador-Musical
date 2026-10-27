@@ -4,6 +4,7 @@ import csv
 import os
 import re
 import statistics
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 COLUMNAS_ESPERADAS: list[str] = [
@@ -32,36 +33,37 @@ CODIGOS_ARTISTA: dict[str, str] = {
 
 TIPOS_ALBUM_PERMITIDOS: set[str] = {"album", "single", "compilation"}
 
-# Expresión regular para id_cancion: 3 letras mayúsculas, guion y 3 dígitos (ej: OAS-001)
-PATRON_ID_CANCION: re.Pattern[str] = re.compile(r"^[A-Z]{3}-\d{3}$")
+DURACION_MIN_PERMITIDA: float = 0.5
+DURACION_MAX_PERMITIDA: float = 30.0
+ENERGY_MIN_PERMITIDA: float = 0.0
+ENERGY_MAX_PERMITIDA: float = 1.0
+CAMPOS_TEXTO: tuple[str, ...] = ("id_cancion", "artista", "cancion", "album", "tipo_album")
+
+# Expresión regular para id_cancion: 3 letras mayúsculas, guion y 3 dígitos (ej: OAS-001).
+# Se aplica con fullmatch (todo el texto debe coincidir); con match + '$' un
+# identificador con salto de línea final ("OAS-001\n") pasaría la validación.
+PATRON_ID_CANCION: re.Pattern[str] = re.compile(r"[A-Z]{3}-\d{3}")
 
 
+@dataclass(frozen=True)
 class Cancion:
-    """Representa una canción validada del catálogo musical."""
+    """Canción validada del catálogo musical.
 
-    def __init__(
-        self,
-        id_cancion: str,
-        artista: str,
-        cancion: str,
-        album: str,
-        tipo_album: str,
-        duracion_min: float,
-        streams: int | None,
-        views: int | None,
-        likes: int | None,
-        energy: float,
-    ) -> None:
-        self.id_cancion: str = id_cancion
-        self.artista: str = artista
-        self.cancion: str = cancion
-        self.album: str = album
-        self.tipo_album: str = tipo_album
-        self.duracion_min: float = duracion_min
-        self.streams: int | None = streams
-        self.views: int | None = views
-        self.likes: int | None = likes
-        self.energy: float = energy
+    Es un dataclass inmutable (frozen): una vez que la fila pasó la limpieza, sus
+    valores no deberían cambiar. Python genera __init__, __eq__ y __hash__ a partir
+    de los campos. streams, views y likes son opcionales (None = dato no disponible).
+    """
+
+    id_cancion: str
+    artista: str
+    cancion: str
+    album: str
+    tipo_album: str
+    duracion_min: float
+    streams: int | None
+    views: int | None
+    likes: int | None
+    energy: float
 
     def duracion_mmss(self) -> str:
         """Formatea la duración en minutos decimales como 'M:SS' (ej: 5.5 -> '5:30')."""
@@ -78,36 +80,11 @@ class Cancion:
 
     def tiene_datos_faltantes(self) -> bool:
         """Retorna True si alguno de los campos opcionales (streams, views o likes) es None."""
-        return (
-            self.streams is None
-            or self.views is None
-            or self.likes is None
-        )
+        return self.streams is None or self.views is None or self.likes is None
 
     def a_dict(self) -> dict[str, Any]:
         """Convierte la canción en un diccionario respetando el orden oficial de columnas."""
-        return {
-            "id_cancion": self.id_cancion,
-            "artista": self.artista,
-            "cancion": self.cancion,
-            "album": self.album,
-            "tipo_album": self.tipo_album,
-            "duracion_min": self.duracion_min,
-            "streams": self.streams,
-            "views": self.views,
-            "likes": self.likes,
-            "energy": self.energy,
-        }
-
-    def __eq__(self, otro: object) -> bool:
-        """Compara dos instancias de Cancion por igualdad exacta de sus atributos."""
-        if not isinstance(otro, Cancion):
-            return False
-        return self.a_dict() == otro.a_dict()
-
-
-class ListaTopCanciones(list[Cancion]):
-    """Subclase de lista que identifica resultados provenientes de top_canciones."""
+        return asdict(self)
 
 
 def validar_formato_id(id_cancion: Any) -> bool:
@@ -120,7 +97,7 @@ def validar_formato_id(id_cancion: Any) -> bool:
     """
     if not isinstance(id_cancion, str):
         return False
-    return bool(PATRON_ID_CANCION.match(id_cancion))
+    return bool(PATRON_ID_CANCION.fullmatch(id_cancion))
 
 
 def _normalizar_texto(valor: Any) -> str | None:
@@ -228,205 +205,215 @@ def _convertir_decimal_estricto(valor: Any) -> float:
     return float(valor)
 
 
+def _etiqueta_id(fila: dict[str, Any]) -> str:
+    """Devuelve el id de la fila como texto para los informes ('SIN_ID' si falta)."""
+    id_raw = fila.get("id_cancion")
+    return str(id_raw) if id_raw is not None else "SIN_ID"
+
+
+def _motivo_identificador(fila: dict[str, Any], ids_vistos: set[str]) -> str | None:
+    """Reglas 1 a 3: formato del id (regex), prefijo coherente con el artista y unicidad."""
+    id_raw = fila.get("id_cancion")
+    if not validar_formato_id(id_raw):
+        return f"id_cancion con formato inválido: '{_etiqueta_id(fila)}'. Se esperaba 'AAA-NNN'."
+
+    id_cancion = str(id_raw)
+    prefijo = id_cancion.split("-")[0]
+    artista_raw = fila.get("artista")
+    artista_esperado = CODIGOS_ARTISTA.get(prefijo)
+    if artista_esperado is None or (
+        artista_raw is not None and artista_raw != artista_esperado
+    ):
+        return (
+            f"El prefijo '{prefijo}' de id_cancion no corresponde "
+            f"al artista '{artista_raw}' (esperado: '{artista_esperado}')."
+        )
+    if id_cancion in ids_vistos:
+        return f"id_cancion duplicado: '{id_cancion}'."
+    return None
+
+
+def _motivo_textos(fila: dict[str, Any]) -> str | None:
+    """Reglas 4 y 5: textos obligatorios no vacíos y tipo_album permitido."""
+    for campo in ("artista", "cancion", "album"):
+        valor = fila.get(campo)
+        if valor is None or str(valor).strip() == "":
+            return f"El campo obligatorio '{campo}' está vacío."
+
+    tipo_album = fila.get("tipo_album")
+    if tipo_album is None or str(tipo_album) not in TIPOS_ALBUM_PERMITIDOS:
+        return (
+            f"tipo_album inválido: '{tipo_album}'. "
+            "Valores permitidos: album, single, compilation."
+        )
+    return None
+
+
+def _leer_duracion(fila: dict[str, Any]) -> tuple[float | None, str | None]:
+    """Regla 6: duracion_min numérica y dentro del rango. Devuelve (valor, motivo)."""
+    try:
+        duracion = _convertir_decimal_estricto(fila.get("duracion_min"))
+    except ValueError:
+        return None, f"duracion_min no numérica: '{fila.get('duracion_min')}'."
+    if not (DURACION_MIN_PERMITIDA <= duracion <= DURACION_MAX_PERMITIDA):
+        return None, (
+            f"duracion_min fuera de rango "
+            f"[{DURACION_MIN_PERMITIDA}, {DURACION_MAX_PERMITIDA}]: {duracion}."
+        )
+    return duracion, None
+
+
+def _leer_enteros(
+    fila: dict[str, Any],
+) -> tuple[dict[str, int | None] | None, str | None]:
+    """Regla 7: streams, views y likes, si existen, deben ser enteros >= 0."""
+    valores: dict[str, int | None] = {}
+    for campo in ("streams", "views", "likes"):
+        valor = fila.get(campo)
+        if valor is None:
+            valores[campo] = None
+            continue
+        try:
+            numero = _convertir_entero_estricto(valor)
+        except ValueError:
+            return None, f"El campo '{campo}' no es un entero válido: '{valor}'."
+        if numero < 0:
+            return None, f"El campo '{campo}' no puede ser negativo: {numero}."
+        valores[campo] = numero
+    return valores, None
+
+
+def _leer_energy(fila: dict[str, Any]) -> tuple[float | None, str | None]:
+    """Regla 8: energy numérica y dentro de [0.0, 1.0]."""
+    try:
+        energy = _convertir_decimal_estricto(fila.get("energy"))
+    except ValueError:
+        return None, f"energy no numérica: '{fila.get('energy')}'."
+    if not (ENERGY_MIN_PERMITIDA <= energy <= ENERGY_MAX_PERMITIDA):
+        return None, (
+            f"energy fuera de rango "
+            f"[{ENERGY_MIN_PERMITIDA}, {ENERGY_MAX_PERMITIDA}]: {energy}."
+        )
+    return energy, None
+
+
+def _validar_fila(
+    fila: dict[str, Any], ids_vistos: set[str]
+) -> tuple[Cancion | None, str | None]:
+    """Aplica las 8 reglas de rechazo en orden y se detiene en la primera que falla.
+
+    Devuelve (Cancion, None) si la fila es válida o (None, motivo) si se rechaza.
+    """
+    motivo = _motivo_identificador(fila, ids_vistos) or _motivo_textos(fila)
+    if motivo is not None:
+        return None, motivo
+
+    duracion, motivo = _leer_duracion(fila)
+    if motivo is not None:
+        return None, motivo
+
+    enteros, motivo = _leer_enteros(fila)
+    if motivo is not None:
+        return None, motivo
+
+    energy, motivo = _leer_energy(fila)
+    if motivo is not None:
+        return None, motivo
+
+    return Cancion(
+        id_cancion=str(fila["id_cancion"]),
+        artista=str(fila["artista"]),
+        cancion=str(fila["cancion"]),
+        album=str(fila["album"]),
+        tipo_album=str(fila["tipo_album"]),
+        duracion_min=duracion,  # type: ignore[arg-type]
+        streams=enteros["streams"],  # type: ignore[index]
+        views=enteros["views"],  # type: ignore[index]
+        likes=enteros["likes"],  # type: ignore[index]
+        energy=energy,  # type: ignore[arg-type]
+    ), None
+
+
+def _aplicar_ajuste_streams_cero(
+    cancion: Cancion, nro_fila: int
+) -> tuple[Cancion, dict[str, Any] | None]:
+    """Decisión de limpieza: streams = 0 significa "dato no disponible" -> None.
+
+    Devuelve la canción (corregida si hizo falta) y el registro del ajuste, o None
+    si no hubo cambio. Un streams negativo no llega acá: ya fue rechazado.
+    """
+    if cancion.streams != 0:
+        return cancion, None
+    ajuste = {
+        "nro_fila": nro_fila,
+        "id_cancion": cancion.id_cancion,
+        "campo": "streams",
+        "valor_original": 0,
+        "accion": "Convertido a None (streams=0 indica dato no disponible)",
+    }
+    return replace(cancion, streams=None), ajuste
+
+
 def limpiar_datos(
     datos: list[dict[str, Any]],
 ) -> tuple[list[Cancion], list[dict[str, Any]], list[dict[str, Any]]]:
-    """Valida las reglas de negocio registrando rechazos y ajustes con su motivo."""
+    """Separa las filas en canciones válidas, rechazos y ajustes, cada uno con su motivo.
+
+    nro_fila cuenta desde 1 en el archivo de datos. Un rechazo por fila, con el
+    primer motivo encontrado (ver _validar_fila).
+    """
     canciones: list[Cancion] = []
     rechazos: list[dict[str, Any]] = []
     ajustes: list[dict[str, Any]] = []
     ids_vistos: set[str] = set()
 
     for nro_fila, fila in enumerate(datos, start=1):
-        id_raw = fila.get("id_cancion")
-        id_etiqueta = str(id_raw) if id_raw is not None else "SIN_ID"
-
-        # 1. Formato de id_cancion mediante expresión regular
-        if not validar_formato_id(id_raw):
+        cancion, motivo = _validar_fila(fila, ids_vistos)
+        if cancion is None:
             rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_etiqueta,
-                    "motivo": f"id_cancion con formato inválido: '{id_etiqueta}'. Se esperaba 'AAA-NNN'.",
-                }
+                {"nro_fila": nro_fila, "id_cancion": _etiqueta_id(fila), "motivo": motivo}
             )
             continue
 
-        id_cancion = str(id_raw)
-        prefijo = id_cancion.split("-")[0]
-        artista_raw = fila.get("artista")
-
-        # 2. Correspondencia entre código del ID y nombre del artista
-        artista_esperado = CODIGOS_ARTISTA.get(prefijo)
-        if artista_esperado is None or (
-            artista_raw is not None and artista_raw != artista_esperado
-        ):
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": (
-                        f"El prefijo '{prefijo}' de id_cancion no corresponde "
-                        f"al artista '{artista_raw}' (esperado: '{artista_esperado}')."
-                    ),
-                }
-            )
-            continue
-
-        # 3. Unicidad de id_cancion
-        if id_cancion in ids_vistos:
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": f"id_cancion duplicado: '{id_cancion}'.",
-                }
-            )
-            continue
-
-        # 4. Campos de texto obligatorios (artista, cancion, album) no vacíos
-        campo_vacio = None
-        for campo_texto in ("artista", "cancion", "album"):
-            if fila.get(campo_texto) is None or str(fila.get(campo_texto)).strip() == "":
-                campo_vacio = campo_texto
-                break
-        if campo_vacio is not None:
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": f"El campo obligatorio '{campo_vacio}' está vacío.",
-                }
-            )
-            continue
-
-        artista = str(fila["artista"])
-        nombre_cancion = str(fila["cancion"])
-        album = str(fila["album"])
-
-        # 5. tipo_album dentro de {album, single, compilation}
-        tipo_album_raw = fila.get("tipo_album")
-        if tipo_album_raw is None or str(tipo_album_raw) not in TIPOS_ALBUM_PERMITIDOS:
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": (
-                        f"tipo_album inválido: '{tipo_album_raw}'. "
-                        "Valores permitidos: album, single, compilation."
-                    ),
-                }
-            )
-            continue
-        tipo_album = str(tipo_album_raw)
-
-        # 6. duracion_min numérica y dentro de [0.5, 30.0]
-        try:
-            duracion_min = _convertir_decimal_estricto(fila.get("duracion_min"))
-        except ValueError:
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": f"duracion_min no numérica: '{fila.get('duracion_min')}'.",
-                }
-            )
-            continue
-
-        if not (0.5 <= duracion_min <= 30.0):
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": f"duracion_min fuera de rango [0.5, 30.0]: {duracion_min}.",
-                }
-            )
-            continue
-
-        # 7. streams, views, likes: si existen deben ser enteros >= 0
-        enteros_validados: dict[str, int | None] = {}
-        error_entero: str | None = None
-        for campo_ent in ("streams", "views", "likes"):
-            valor_ent = fila.get(campo_ent)
-            if valor_ent is None:
-                enteros_validados[campo_ent] = None
-            else:
-                try:
-                    numero_ent = _convertir_entero_estricto(valor_ent)
-                except ValueError:
-                    error_entero = f"El campo '{campo_ent}' no es un entero válido: '{valor_ent}'."
-                    break
-                if numero_ent < 0:
-                    error_entero = (
-                        f"El campo '{campo_ent}' no puede ser negativo: {numero_ent}."
-                    )
-                    break
-                enteros_validados[campo_ent] = numero_ent
-
-        if error_entero is not None:
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": error_entero,
-                }
-            )
-            continue
-
-        # 8. energy numérica y dentro de [0.0, 1.0]
-        try:
-            energy = _convertir_decimal_estricto(fila.get("energy"))
-        except ValueError:
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": f"energy no numérica: '{fila.get('energy')}'.",
-                }
-            )
-            continue
-
-        if not (0.0 <= energy <= 1.0):
-            rechazos.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "motivo": f"energy fuera de rango [0.0, 1.0]: {energy}.",
-                }
-            )
-            continue
-
-        # Decisión de limpieza: streams = 0 significa "dato no disponible" -> None + ajuste
-        streams_final = enteros_validados["streams"]
-        if streams_final == 0:
-            streams_final = None
-            ajustes.append(
-                {
-                    "nro_fila": nro_fila,
-                    "id_cancion": id_cancion,
-                    "campo": "streams",
-                    "valor_original": 0,
-                    "accion": "Convertido a None (streams=0 indica dato no disponible)",
-                }
-            )
-
-        ids_vistos.add(id_cancion)
-        canciones.append(
-            Cancion(
-                id_cancion=id_cancion,
-                artista=artista,
-                cancion=nombre_cancion,
-                album=album,
-                tipo_album=tipo_album,
-                duracion_min=duracion_min,
-                streams=streams_final,
-                views=enteros_validados["views"],
-                likes=enteros_validados["likes"],
-                energy=energy,
-            )
-        )
+        cancion, ajuste = _aplicar_ajuste_streams_cero(cancion, nro_fila)
+        if ajuste is not None:
+            ajustes.append(ajuste)
+        ids_vistos.add(cancion.id_cancion)
+        canciones.append(cancion)
 
     return canciones, rechazos, ajustes
+
+
+def registrar_normalizaciones(
+    originales: list[dict[str, Any]],
+    normalizados: list[dict[str, Any]],
+    filas_excluidas: set[int] | None = None,
+) -> list[dict[str, Any]]:
+    """Registra las filas cuyo texto cambió al normalizar (espacios sobrantes).
+
+    Compara cada campo de texto antes y después de normalizar_campos. No cuenta el
+    paso de "" a None: eso es un dato faltante, no un cambio de texto. filas_excluidas
+    permite omitir las filas rechazadas, que no llegan al catálogo.
+    """
+    excluidas = filas_excluidas or set()
+    ajustes: list[dict[str, Any]] = []
+    for nro_fila, (antes, despues) in enumerate(zip(originales, normalizados), start=1):
+        if nro_fila in excluidas:
+            continue
+        for campo in CAMPOS_TEXTO:
+            original = antes.get(campo)
+            normal = despues.get(campo)
+            if isinstance(original, str) and normal is not None and original != normal:
+                ajustes.append(
+                    {
+                        "nro_fila": nro_fila,
+                        "id_cancion": _etiqueta_id(despues),
+                        "campo": campo,
+                        "valor_original": original,
+                        "accion": f"Texto normalizado: {original!r} -> {normal!r}",
+                    }
+                )
+    return ajustes
 
 
 def resumen_general(canciones: list[Cancion]) -> dict[str, Any]:
@@ -437,9 +424,6 @@ def resumen_general(canciones: list[Cancion]) -> dict[str, Any]:
             "total_artistas": 0,
             "total_albumes": 0,
             "conteo_tipo_album": {"album": 0, "single": 0, "compilation": 0},
-            "tipo_album_album": 0,
-            "tipo_album_single": 0,
-            "tipo_album_compilation": 0,
             "duracion_media_min": 0.0,
             "energy_media": 0.0,
             "canciones_con_streams": 0,
@@ -471,9 +455,6 @@ def resumen_general(canciones: list[Cancion]) -> dict[str, Any]:
         "total_artistas": len(artistas),
         "total_albumes": len(albumes),
         "conteo_tipo_album": conteo_tipos,
-        "tipo_album_album": conteo_tipos["album"],
-        "tipo_album_single": conteo_tipos["single"],
-        "tipo_album_compilation": conteo_tipos["compilation"],
         "duracion_media_min": duracion_media,
         "energy_media": energy_media,
         "canciones_con_streams": len(con_streams),
@@ -535,7 +516,7 @@ def top_canciones(
         con_streams,
         key=lambda c: (-int(c.streams), c.cancion.lower(), c.id_cancion),  # type: ignore[arg-type]
     )
-    return ListaTopCanciones(ordenadas[:n])
+    return ordenadas[:n]
 
 
 def album_mas_escuchado_por_artista(
@@ -708,11 +689,18 @@ def ejecutar_operacion(
 
 
 def verificar_resultado(
-    resultado: dict[str, Any] | list[Any], canciones: list[Cancion]
+    resultado: dict[str, Any] | list[Any],
+    canciones: list[Cancion],
+    operacion: str | None = None,
 ) -> None:
-    """Verifica invariantes de consistencia sobre las canciones y el resultado."""
+    """Verifica invariantes de las canciones y propiedades del resultado.
+
+    Cada propiedad se comprueba con un cálculo distinto al que produjo el resultado,
+    para que la verificación pueda fallar de verdad. `operacion` (opcional) activa la
+    propiedad propia de 'top': el orden descendente por streams.
+    """
     for cancion in canciones:
-        if cancion.duracion_min < 0.5 or cancion.duracion_min > 30.0:
+        if not (DURACION_MIN_PERMITIDA <= cancion.duracion_min <= DURACION_MAX_PERMITIDA):
             raise ValueError("Invariante violado: canción con duración fuera de rango.")
         if cancion.streams is not None and cancion.streams <= 0:
             raise ValueError(
@@ -722,13 +710,10 @@ def verificar_resultado(
             raise ValueError("Invariante violado: views negativo.")
         if cancion.likes is not None and cancion.likes < 0:
             raise ValueError("Invariante violado: likes negativo.")
-        if cancion.energy < 0.0 or cancion.energy > 1.0:
+        if not (ENERGY_MIN_PERMITIDA <= cancion.energy <= ENERGY_MAX_PERMITIDA):
             raise ValueError("Invariante violado: energy fuera de [0.0, 1.0].")
 
-    # Propiedad: la suma de streams agrupada por álbum coincide con la suma total de canciones con streams
-    total_streams_directo = sum(
-        c.streams for c in canciones if c.streams is not None
-    )
+    total_streams_directo = sum(c.streams for c in canciones if c.streams is not None)
     streams_por_artista_album: dict[tuple[str, str], int] = {}
     for cancion in canciones:
         if cancion.streams is not None:
@@ -736,11 +721,6 @@ def verificar_resultado(
             streams_por_artista_album[clave] = (
                 streams_por_artista_album.get(clave, 0) + cancion.streams
             )
-
-    if sum(streams_por_artista_album.values()) != total_streams_directo:
-        raise ValueError(
-            "Inconsistencia interna: la suma de streams por álbum no coincide con el total general."
-        )
 
     if isinstance(resultado, dict):
         if resultado.get("total_canciones", 0) < 0 or resultado.get("streams_totales", 0) < 0:
@@ -750,35 +730,54 @@ def verificar_resultado(
                 "Inconsistencia en resumen: streams_totales no coincide con la suma de las canciones."
             )
 
-    elif isinstance(resultado, ListaTopCanciones):
+    elif operacion == "top" and isinstance(resultado, list):
         for idx, cancion in enumerate(resultado):
             if cancion.streams is None or cancion.streams < 0:
                 raise ValueError(
                     "Invariante violado en top: incluye una canción sin streams válidos."
                 )
-            if idx > 0:
-                anterior = resultado[idx - 1]
-                assert anterior.streams is not None
-                if cancion.streams > anterior.streams:
-                    raise ValueError(
-                        "Invariante violado en top: la lista no está ordenada de forma descendente."
-                    )
+            if idx > 0 and cancion.streams > resultado[idx - 1].streams:
+                raise ValueError(
+                    "Invariante violado en top: la lista no está ordenada de forma descendente."
+                )
 
     elif isinstance(resultado, list) and resultado:
         primero = resultado[0]
         if isinstance(primero, dict) and "album" in primero and "streams_totales" in primero:
-            for fila in resultado:
-                st = fila["streams_totales"]
-                if st != "sin datos":
-                    if int(st) < 0:
-                        raise ValueError("Invariante violado: streams_totales negativo en álbumes.")
-                    esperado = streams_por_artista_album.get(
-                        (fila["artista"], fila["album"]), 0
-                    )
-                    if int(st) != esperado:
-                        raise ValueError(
-                            f"La suma de streams del álbum '{fila['album']}' ({st}) no coincide con el cálculo ({esperado})."
-                        )
+            _verificar_albumes(resultado, streams_por_artista_album)
+
+
+def _verificar_albumes(
+    resultado: list[dict[str, Any]],
+    streams_por_artista_album: dict[tuple[str, str], int],
+) -> None:
+    """Comprueba que cada fila de 'albumes' tenga la suma correcta y sea realmente el máximo."""
+    for fila in resultado:
+        artista = fila["artista"]
+        sumas_artista = [
+            total for (art, _), total in streams_por_artista_album.items() if art == artista
+        ]
+        if fila["streams_totales"] == "sin datos":
+            if sumas_artista:
+                raise ValueError(
+                    f"{artista} figura 'sin datos' pero tiene canciones con streams."
+                )
+            continue
+
+        total = int(fila["streams_totales"])
+        if total < 0:
+            raise ValueError("Invariante violado: streams_totales negativo en álbumes.")
+        esperado = streams_por_artista_album.get((artista, fila["album"]), 0)
+        if total != esperado:
+            raise ValueError(
+                f"La suma de streams del álbum '{fila['album']}' ({total}) "
+                f"no coincide con el cálculo ({esperado})."
+            )
+        if total != max(sumas_artista):
+            raise ValueError(
+                f"El álbum '{fila['album']}' de {artista} no es el de mayor suma de streams "
+                f"({max(sumas_artista)})."
+            )
 
 
 def guardar_resultado(

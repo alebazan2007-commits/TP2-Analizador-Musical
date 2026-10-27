@@ -16,7 +16,12 @@ class FuenteDatos(ABC):
 
 
 class FuenteCSV(FuenteDatos):
-    """Implementación de lectura para archivos CSV codificados en UTF-8."""
+    """Implementación de lectura para archivos CSV codificados en UTF-8.
+
+    Usa 'utf-8-sig' para tolerar la marca BOM que agrega Excel en Windows al
+    guardar como "CSV UTF-8"; sin ella, el primer encabezado quedaría como
+    '\\ufeffid_cancion' y la validación de esquema fallaría.
+    """
 
     def cargar(self, ruta: str) -> list[dict[str, Any]]:
         """Lee un archivo CSV y retorna sus filas como una lista de diccionarios."""
@@ -25,7 +30,7 @@ class FuenteCSV(FuenteDatos):
         if os.path.getsize(ruta) == 0:
             raise ValueError(f"El archivo CSV está vacío: '{ruta}'.")
 
-        with open(ruta, mode="r", encoding="utf-8", newline="") as archivo:
+        with open(ruta, mode="r", encoding="utf-8-sig", newline="") as archivo:
             lector = csv.DictReader(archivo)
             if not lector.fieldnames:
                 raise ValueError(
@@ -41,7 +46,7 @@ class FuenteCSV(FuenteDatos):
 
 
 class FuenteJSON(FuenteDatos):
-    """Implementación de lectura para archivos JSON codificados en UTF-8."""
+    """Implementación de lectura para archivos JSON codificados en UTF-8 (con o sin BOM)."""
 
     def cargar(self, ruta: str) -> list[dict[str, Any]]:
         """Lee un archivo JSON validando que su estructura sea una lista de objetos."""
@@ -51,7 +56,7 @@ class FuenteJSON(FuenteDatos):
             raise ValueError(f"El archivo JSON está vacío: '{ruta}'.")
 
         try:
-            with open(ruta, mode="r", encoding="utf-8") as archivo:
+            with open(ruta, mode="r", encoding="utf-8-sig") as archivo:
                 contenido = json.load(archivo)
         except json.JSONDecodeError as err:
             raise ValueError(

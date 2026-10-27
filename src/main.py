@@ -14,6 +14,7 @@ from src.pipeline import (
     guardar_resultado,
     limpiar_datos,
     normalizar_campos,
+    registrar_normalizaciones,
     validar_esquema,
     verificar_resultado,
 )
@@ -216,13 +217,20 @@ def main(argv: list[str] | None = None) -> int:
             "artista2": getattr(args, "artista2", None),
         }
 
-        datos = obtener_fuente(ruta_entrada).cargar(ruta_entrada)
-        total_leidas = len(datos)
-        datos = normalizar_campos(datos)
+        datos_originales = obtener_fuente(ruta_entrada).cargar(ruta_entrada)
+        total_leidas = len(datos_originales)
+        datos = normalizar_campos(datos_originales)
         validar_esquema(datos)
         canciones, rechazos, ajustes = limpiar_datos(datos)
+
+        # Además del ajuste streams=0, se registran los textos corregidos (espacios
+        # sobrantes) de las filas aceptadas, para que ninguna limpieza sea silenciosa.
+        filas_rechazadas = {rechazo["nro_fila"] for rechazo in rechazos}
+        ajustes += registrar_normalizaciones(datos_originales, datos, filas_rechazadas)
+        ajustes.sort(key=lambda ajuste: ajuste["nro_fila"])
+
         resultado = ejecutar_operacion(canciones, args.operacion, parametros)
-        verificar_resultado(resultado, canciones)
+        verificar_resultado(resultado, canciones, args.operacion)
 
         ruta_salida = os.path.join(salida_dir, f"resultado_{args.operacion}.csv")
         ruta_rechazos = os.path.join(salida_dir, "rechazos.csv")
