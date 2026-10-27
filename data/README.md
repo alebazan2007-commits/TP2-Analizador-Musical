@@ -9,8 +9,8 @@
 | **Publicado por** | Usuario de Kaggle `sanjanchaudhari` |
 | **Archivo original** | `cleaned_dataset.csv` (20.594 filas y 24 columnas). No se incluye en este repositorio. |
 | **Responsable del recorte y de este repositorio** | Alejo Bazan Forti |
-| **Licencia** | No verificada en los materiales disponibles; no se atribuye una licencia sin confirmarla en la ficha original. |
-| **Fecha de consulta** | No registrada en los archivos del proyecto. |
+| **Licencia** | [Open Data Commons Public Domain Dedication and License (PDDL) v1.0]. |
+| **Fecha de consulta** | 26/10/2026. |
 | **Condiciones de uso** | Uso académico, sujeto a la licencia indicada arriba. No se redistribuye el archivo original completo, solo un recorte de 80 canciones. |
 
 Las columnas originales `Channel`, `Licensed` y `official_video` indican que `views` y `likes` provienen de videos de YouTube asociados a cada canción, mientras que `streams` y `energy` corresponden a métricas de Spotify. Las condiciones de uso aplicables a esas plataformas deben consultarse en la ficha del dataset.
